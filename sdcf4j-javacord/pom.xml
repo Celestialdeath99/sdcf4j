@@ -60,6 +60,7 @@
     </build>
 
     <repositories>
+        <!-- Javacord uses Jitpack -->
         <repository>
             <id>jitpack.io</id>
             <url>https://jitpack.io</url>
@@ -75,9 +76,15 @@
         </dependency>
         <!-- Javacord -->
         <dependency>
-            <groupId>de.btobastian</groupId>
-            <artifactId>Javacord</artifactId>
-            <version>8ded4aa</version>
+            <groupId>com.github.Javacord.Javacord</groupId>
+            <artifactId>javacord-api</artifactId>
+            <version>c1d5429</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.github.Javacord.Javacord</groupId>
+            <artifactId>javacord-core</artifactId>
+            <version>c1d5429</version>
             <scope>provided</scope>
         </dependency>
     </dependencies>

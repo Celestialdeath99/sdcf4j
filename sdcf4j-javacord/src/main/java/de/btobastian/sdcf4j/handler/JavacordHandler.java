@@ -18,17 +18,22 @@
  */
 package de.btobastian.sdcf4j.handler;
 
-import de.btobastian.javacord.DiscordApi;
-import de.btobastian.javacord.entities.Server;
-import de.btobastian.javacord.entities.User;
-import de.btobastian.javacord.entities.channels.*;
-import de.btobastian.javacord.entities.message.Message;
-import de.btobastian.javacord.entities.message.MessageAuthor;
-import de.btobastian.javacord.utils.logging.LoggerUtil;
 import de.btobastian.sdcf4j.Command;
 import de.btobastian.sdcf4j.CommandHandler;
 import de.btobastian.sdcf4j.Sdcf4jMessage;
-import org.slf4j.Logger;
+import org.apache.logging.log4j.Logger;
+import org.javacord.api.DiscordApi;
+import org.javacord.api.entity.channel.Channel;
+import org.javacord.api.entity.channel.GroupChannel;
+import org.javacord.api.entity.channel.PrivateChannel;
+import org.javacord.api.entity.channel.ServerChannel;
+import org.javacord.api.entity.channel.ServerTextChannel;
+import org.javacord.api.entity.channel.TextChannel;
+import org.javacord.api.entity.message.Message;
+import org.javacord.api.entity.message.MessageAuthor;
+import org.javacord.api.entity.server.Server;
+import org.javacord.api.entity.user.User;
+import org.javacord.core.util.logging.LoggerUtil;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
@@ -234,7 +239,7 @@ public class JavacordHandler extends CommandHandler {
         // test user
         if (arg.matches("<@([0-9]*)>")) {
             String id = arg.substring(2, arg.length() - 1);
-            User user = api.getUserById(id).orElse(null);
+            User user = api.getCachedUserById(id).orElse(null);
             if (user != null) {
                 return user;
             }
