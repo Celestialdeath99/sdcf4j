@@ -33,10 +33,12 @@ import org.javacord.api.entity.message.Message;
 import org.javacord.api.entity.message.MessageAuthor;
 import org.javacord.api.entity.server.Server;
 import org.javacord.api.entity.user.User;
+import org.javacord.api.event.message.MessageCreateEvent;
 import org.javacord.core.util.logging.LoggerUtil;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.regex.Matcher;
 
 /**
  * A command handler for the Javacord library.
@@ -54,7 +56,7 @@ public class JavacordHandler extends CommandHandler {
      * @param api The api.
      */
     public JavacordHandler(DiscordApi api) {
-        api.addMessageCreateListener(event -> handleMessageCreate(api, event.getMessage()));
+        api.addMessageCreateListener(event -> handleMessageCreate(api, event));
     }
 
     /**
@@ -82,9 +84,10 @@ public class JavacordHandler extends CommandHandler {
      * Handles a received message.
      *
      * @param api The api.
-     * @param message The received message.
+     * @param event The received event.
      */
-    private void handleMessageCreate(DiscordApi api, final Message message) {
+    private void handleMessageCreate(DiscordApi api, final MessageCreateEvent event) {
+        Message message = event.getMessage();
         if (message.getUserAuthor().map(User::isYourself).orElse(false)) {
             return;
         }
@@ -105,8 +108,11 @@ public class JavacordHandler extends CommandHandler {
             }
         }
         Command commandAnnotation = command.getCommandAnnotation();
-        if (commandAnnotation.requiresMention() && !commandString.equals(api.getYourself().getMentionTag())) {
-            return;
+        if (commandAnnotation.requiresMention()) {
+            Matcher matcher = USER_MENTION.matcher(commandString);
+            if (!matcher.find() || !matcher.group("id").equals(api.getYourself().getIdAsString())) {
+                return;
+            }
         }
         if (message.getPrivateChannel().isPresent() && !commandAnnotation.privateMessages()) {
             return;
@@ -120,7 +126,7 @@ public class JavacordHandler extends CommandHandler {
             }
             return;
         }
-        final Object[] parameters = getParameters(splitMessage, command, message, api);
+        final Object[] parameters = getParameters(splitMessage, command, event, api);
         if (commandAnnotation.async()) {
             final SimpleCommand commandFinal = command;
             api.getThreadPool().getExecutorService().submit(() -> invokeMethod(commandFinal, message, parameters));
@@ -155,11 +161,12 @@ public class JavacordHandler extends CommandHandler {
      *
      * @param splitMessage The spit message (index 0: command, index > 0: arguments)
      * @param command The command.
-     * @param message The original message.
+     * @param event The received event.
      * @param api The api.
      * @return The parameters which are used to invoke the executor's method.
      */
-    private Object[] getParameters(String[] splitMessage, SimpleCommand command, Message message, DiscordApi api) {
+    private Object[] getParameters(String[] splitMessage, SimpleCommand command, MessageCreateEvent event, DiscordApi api) {
+        Message message = event.getMessage();
         String[] args = Arrays.copyOfRange(splitMessage, 1, splitMessage.length);
         Class<?>[] parameterTypes = command.getMethod().getParameterTypes();
         final Object[] parameters = new Object[parameterTypes.length];
@@ -177,6 +184,8 @@ public class JavacordHandler extends CommandHandler {
                 }
             } else if (type == String[].class) {
                 parameters[i] = args;
+            } else if (type == MessageCreateEvent.class) {
+                parameters[i] = event;
             } else if (type == Message.class) {
                 parameters[i] = message;
             } else if (type == DiscordApi.class) {
@@ -210,7 +219,7 @@ public class JavacordHandler extends CommandHandler {
     }
 
     /**
-     * Tries to get objects (like channel, user, integer) from the given strings.
+     * Tries to get objects (like channel, user, long) from the given strings.
      *
      * @param api The api.
      * @param args The string array.
@@ -225,7 +234,7 @@ public class JavacordHandler extends CommandHandler {
     }
 
     /**
-     * Tries to get an object (like channel, user, integer) from the given string.
+     * Tries to get an object (like channel, user, long) from the given string.
      *
      * @param api The api.
      * @param arg The string.
@@ -237,8 +246,9 @@ public class JavacordHandler extends CommandHandler {
             return Long.valueOf(arg);
         } catch (NumberFormatException ignored) {}
         // test user
-        if (arg.matches("<@([0-9]*)>")) {
-            String id = arg.substring(2, arg.length() - 1);
+        Matcher matcher = USER_MENTION.matcher(arg);
+        if (matcher.find()) {
+            String id = matcher.group("id");
             User user = api.getCachedUserById(id).orElse(null);
             if (user != null) {
                 return user;
